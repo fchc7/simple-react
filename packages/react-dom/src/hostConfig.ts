@@ -87,3 +87,13 @@ export function insertChildToContainer(
 ) {
 	parent.insertBefore(child, before)
 }
+
+/**
+ * 使用宿主环境下的微任务去执行任务
+ */
+export const scheduleMicroTask =
+	typeof queueMicrotask === 'function'
+		? queueMicrotask
+		: typeof Promise.resolve === 'function'
+			? (callback: () => void) => Promise.resolve().then(callback)
+			: setTimeout

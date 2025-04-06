@@ -2,6 +2,7 @@ import { Props, Key, ReactElement } from 'shared/ReactTypes'
 import { Fragment, FunctionComponent, HostComponent, WorkTag } from './workTags'
 import { Flags, NoFlags } from './fiberFlags'
 import { Container } from 'hostConfig'
+import { Lane, Lanes, NoLane, NoLanes } from './fiberLanes'
 
 export class FiberNode {
 	tag: WorkTag
@@ -90,6 +91,8 @@ export class FiberRootNode {
 	current: FiberNode
 	container: Container
 	finishedWork: FiberNode | null
+	pendingLanes: Lanes
+	finishedLane: Lane
 
 	constructor(container: Container, hostRootFiber: FiberNode) {
 		// current 指针用于双缓冲切换，实现current 和 workInProgress 的角色互换
@@ -99,6 +102,11 @@ export class FiberRootNode {
 		// 指向了整个更新完成后的 HostRootFiber
 		this.finishedWork = null
 		hostRootFiber.stateNode = this
+
+		// 所有没有被消费的lane的集合，每次更新通过调度都会选出一个高优先级 lane 的更新批量进行消费
+		this.pendingLanes = NoLanes
+		// 本次更新消费的lane
+		this.finishedLane = NoLane
 	}
 }
 

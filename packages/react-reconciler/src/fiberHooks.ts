@@ -11,8 +11,10 @@ import {
 	UpdateQueue,
 } from './updateQueue'
 import { scheduleUpdateOnFiber } from './workLoop'
+import { Lane, NoLane, requestUpdateLane } from './fiberLanes'
 
 const { currentDispatcher } = internals
+let renderLane: Lane = NoLane
 
 /**
  * hook 是作为链表结构存放在 fiber 的 memoizedState 属性中
@@ -31,15 +33,18 @@ let currentHook: Hook | null = null
 /**
  * render阶段向下递归处理函数组件的时候，会调用此方法
  * @param wip 当前正在渲染的 fiber 节点
+ * @param renderLane 当前正在渲染任务的 lane
  * @returns
  */
-export function renderWithHooks(wip: FiberNode): ReactElement {
+export function renderWithHooks(wip: FiberNode, lane: Lane): ReactElement {
 	// 赋值当前正在渲染的 fiber 节点
 	currentlyRenderingFiber = wip
+	// 重置 hooks 链表
 	wip.memoizedState = null
 	workInProgressHook = null
 	// 重置 currentHook，确保每次更新都从头开始
 	currentHook = null
+	renderLane = lane
 
 	const current = wip.alternate
 	if (current !== null) {
@@ -59,7 +64,7 @@ export function renderWithHooks(wip: FiberNode): ReactElement {
 	currentlyRenderingFiber = null
 	workInProgressHook = null
 	currentHook = null
-
+	renderLane = NoLane
 	return children
 }
 
@@ -142,8 +147,15 @@ function updateState<State>(): [State, Dispatch<State>] {
 	// 计算新的state的逻辑
 	const queue = hook.updateQueue as UpdateQueue<State>
 	const pending = queue.shared.pending
+	// 清空 pending，否则会导致多次更新的时候，pending 会累加
+	queue.shared.pending = null
+
 	if (pending !== null) {
-		const { memoizedState } = processUpdateQueue(hook.memoizedState, pending)
+		const { memoizedState } = processUpdateQueue(
+			hook.memoizedState,
+			pending,
+			renderLane,
+		)
 		hook.memoizedState = memoizedState
 	}
 
@@ -205,7 +217,8 @@ function dispatchSetState<State>(
 	updateQueue: UpdateQueue<State>,
 	action: Action<State>,
 ) {
-	const update = createUpdate(action)
+	const lane = requestUpdateLane()
+	const update = createUpdate(action, lane)
 	enqueueUpdate(updateQueue, update)
-	scheduleUpdateOnFiber(fiber)
+	scheduleUpdateOnFiber(fiber, lane)
 }

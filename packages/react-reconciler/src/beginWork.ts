@@ -10,6 +10,7 @@ import {
 	HostText,
 } from './workTags'
 import { renderWithHooks } from './fiberHooks'
+import { Lane } from './fiberLanes'
 
 /**
  * 递归生成 FiberNode 树的 递 阶段
@@ -18,10 +19,14 @@ import { renderWithHooks } from './fiberHooks'
  * @param fiber 当前正在工作的 FiberNode
  * @returns 子级 FiberNode
  */
-export const beginWork = (wip: FiberNode): FiberNode | null => {
+export const beginWork = (
+	wip: FiberNode,
+	renderLane: Lane,
+): FiberNode | null => {
 	switch (wip.tag) {
 		case HostRoot:
-			return updateHostRoot(wip)
+			// 因为会调用 processUpdateQueue 方法，所以需要传入 renderLane
+			return updateHostRoot(wip, renderLane)
 		case HostComponent:
 			return updateHostComponent(wip)
 		case HostText:
@@ -32,7 +37,8 @@ export const beginWork = (wip: FiberNode): FiberNode | null => {
 		case Fragment:
 			return updateFragment(wip)
 		case FunctionComponent:
-			return updateFunctionComponent(wip)
+			// 因为会调用 processUpdateQueue 方法，所以需要传入 renderLane
+			return updateFunctionComponent(wip, renderLane)
 		default:
 			if (__DEV__) {
 				console.warn('beginWork 未处理的 tag', wip.tag)
@@ -54,13 +60,13 @@ export const beginWork = (wip: FiberNode): FiberNode | null => {
  * @param wip
  * @returns
  */
-function updateHostRoot(wip: FiberNode): FiberNode | null {
+function updateHostRoot(wip: FiberNode, renderLane: Lane): FiberNode | null {
 	const baseState = wip.memoizedState
 	const updateQueue = wip.updateQueue as UpdateQueue<Element>
 	const pending = updateQueue.shared.pending
 	updateQueue.shared.pending = null
 
-	const { memoizedState } = processUpdateQueue(baseState, pending)
+	const { memoizedState } = processUpdateQueue(baseState, pending, renderLane)
 	wip.memoizedState = memoizedState
 
 	const nextChildren = wip.memoizedState
@@ -99,8 +105,8 @@ function reconcileChildren(wip: FiberNode, children?: ReactElement) {
 	}
 }
 
-function updateFunctionComponent(wip: FiberNode) {
-	const nextChildren = renderWithHooks(wip)
+function updateFunctionComponent(wip: FiberNode, renderLane: Lane) {
+	const nextChildren = renderWithHooks(wip, renderLane)
 	reconcileChildren(wip, nextChildren)
 	return wip.child
 }

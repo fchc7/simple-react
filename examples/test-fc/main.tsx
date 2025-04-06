@@ -10,8 +10,20 @@ function App() {
 
 	return (
 		<div>
-			<ul onClickCapture={() => setCount(count + 1)}>
-				<li>7</li>
+			<ul
+				onClick={() => {
+					setCount((count) => {
+						console.log('count', count)
+						return count + 1
+					})
+					setCount((count) => {
+						console.log('count', count)
+						return count + 1
+					})
+					setCount((count) => count + 1)
+				}}
+			>
+				<li>{count}</li>
 				<li>8</li>
 				{arr}
 			</ul>
