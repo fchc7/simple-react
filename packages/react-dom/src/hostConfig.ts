@@ -79,3 +79,11 @@ export function removeChild(
 ) {
 	parent.removeChild(child)
 }
+
+export function insertChildToContainer(
+	child: Instance | TextInstance,
+	parent: Instance | Container,
+	before: Instance,
+) {
+	parent.insertBefore(child, before)
+}
