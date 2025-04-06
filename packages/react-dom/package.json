@@ -1,0 +1,19 @@
+{
+	"name": "react-dom",
+	"version": "0.1.0",
+	"description": "react 在浏览器环境下的实现",
+	"module": "index.ts",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"dependencies": {
+		"react-reconciler": "workspace:*",
+		"shared": "workspace:*"
+	},
+	"peerDependencies": {
+		"react": "workspace:*"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC"
+}
