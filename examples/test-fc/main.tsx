@@ -1,34 +1,33 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 
 function App() {
-	const [count, setCount] = useState(100)
-	const arr =
-		count % 2 === 0
-			? [<li key="1">1</li>, <li key="2">2</li>, <li key="3">3</li>]
-			: [<li key="3">3</li>, <li key="2">2</li>, <li key="1">1</li>]
+	const [count, setCount] = useState(0)
+	useEffect(() => {
+		console.log('App mount')
+	}, [])
 
+	useEffect(() => {
+		console.log('App update', count)
+		return () => {
+			console.log('App destroy', count)
+		}
+	}, [count])
 	return (
-		<div>
-			<ul
-				onClick={() => {
-					setCount((count) => {
-						console.log('count', count)
-						return count + 1
-					})
-					setCount((count) => {
-						console.log('count', count)
-						return count + 1
-					})
-					setCount((count) => count + 1)
-				}}
-			>
-				<li>{count}</li>
-				<li>8</li>
-				{arr}
-			</ul>
+		<div onClick={() => setCount(count + 1)}>
+			{count === 0 ? <Child /> : 'noop'}
 		</div>
 	)
+}
+
+function Child() {
+	useEffect(() => {
+		console.log('Child mount')
+		return () => {
+			console.log('Child unmount')
+		}
+	}, [])
+	return <div>child</div>
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<App />)

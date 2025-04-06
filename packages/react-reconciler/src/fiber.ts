@@ -3,6 +3,7 @@ import { Fragment, FunctionComponent, HostComponent, WorkTag } from './workTags'
 import { Flags, NoFlags } from './fiberFlags'
 import { Container } from 'hostConfig'
 import { Lane, Lanes, NoLane, NoLanes } from './fiberLanes'
+import { Effect } from './fiberHooks'
 
 export class FiberNode {
 	tag: WorkTag
@@ -87,12 +88,21 @@ export class FiberNode {
  * 			     [App]
  */
 
+/**
+ * 保存本次更新中需要执行的 useEffect 的销毁函数和创建函数
+ */
+export type PendingPassiveEffects = {
+	unmount: Effect[]
+	update: Effect[]
+}
+
 export class FiberRootNode {
 	current: FiberNode
 	container: Container
 	finishedWork: FiberNode | null
 	pendingLanes: Lanes
 	finishedLane: Lane
+	pendingPassiveEffects: PendingPassiveEffects
 
 	constructor(container: Container, hostRootFiber: FiberNode) {
 		// current 指针用于双缓冲切换，实现current 和 workInProgress 的角色互换
@@ -107,6 +117,10 @@ export class FiberRootNode {
 		this.pendingLanes = NoLanes
 		// 本次更新消费的lane
 		this.finishedLane = NoLane
+		this.pendingPassiveEffects = {
+			unmount: [],
+			update: [],
+		}
 	}
 }
 

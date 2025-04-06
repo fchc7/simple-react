@@ -3,6 +3,7 @@
  */
 export interface Dispatcher {
 	useState: <T>(initialState: T | (() => T)) => [T, Dispatch<T>]
+	useEffect: (create: () => () => void, deps: any[]) => void
 }
 
 export type Dispatch<State> = (
