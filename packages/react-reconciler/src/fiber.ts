@@ -1,5 +1,5 @@
 import { Props, Key, ReactElement } from 'shared/ReactTypes'
-import { FunctionComponent, HostComponent, WorkTag } from './workTags'
+import { Fragment, FunctionComponent, HostComponent, WorkTag } from './workTags'
 import { Flags, NoFlags } from './fiberFlags'
 import { Container } from 'hostConfig'
 
@@ -25,7 +25,7 @@ export class FiberNode {
 	constructor(tag: WorkTag, pendingProps: Props, key: Key) {
 		this.tag = tag
 		this.pendingProps = pendingProps
-		this.key = key
+		this.key = key || null
 
 		// 不同的type有不同的stateNode
 		// 如 HostComponent 的 stateNode 是 DOM 元素
@@ -122,5 +122,18 @@ export const createFiberFromElement = (element: ReactElement): FiberNode => {
 	fiber.type = element.type
 	fiber.stateNode = null
 
+	return fiber
+}
+
+/**
+ * 根据 ReactElement 创建 Fragment FiberNode
+ * @param elements
+ * @param key
+ */
+export const createFiberFromFragment = (
+	elements: ReactElement[],
+	key: Key,
+): FiberNode => {
+	const fiber = new FiberNode(Fragment, elements, key)
 	return fiber
 }

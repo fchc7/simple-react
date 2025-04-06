@@ -1,8 +1,12 @@
-import { Props, ReactElement } from 'shared/ReactTypes'
-import { createFiberFromElement, FiberNode } from './fiber'
-import { REACT_ELEMENT_TYPE } from 'shared/ReactSymbols'
+import { Key, Props, ReactElement } from 'shared/ReactTypes'
+import {
+	createFiberFromElement,
+	createFiberFromFragment,
+	FiberNode,
+} from './fiber'
+import { REACT_ELEMENT_TYPE, REACT_FRAGMENT_TYPE } from 'shared/ReactSymbols'
 import { ChildDeletion, Placement } from './fiberFlags'
-import { HostText } from './workTags'
+import { Fragment, HostText } from './workTags'
 import { createWorkInProgress } from './workLoop'
 
 type ExistingChildren = Map<string | number, FiberNode>
@@ -98,7 +102,15 @@ function ChildReconciler(shouldTrackSideEffects: boolean) {
 				if (newChild.$$typeof === REACT_ELEMENT_TYPE) {
 					// key 相同，且 type 相同，则复用fiber, wip
 					if (newChild.type === currentChild.type) {
-						const existing = useFiber(currentChild, newChild.props)
+						let props = newChild.props
+						// 上面已经处理了最外层为 Fragment 的情况，所以这里需要处理组件中子节点为 Fragment 的情况
+						// 如 <div><Fragment><span>123</span></Fragment></div>
+						// 都是将子节点作为新的 newChild，去掉外层的 Fragment
+						if (newChild.type === REACT_FRAGMENT_TYPE) {
+							props = newChild.props.children
+						}
+
+						const existing = useFiber(currentChild, props)
 						existing.return = returnFiber
 						// 当前节点可以复用，标记之前的其余的同级节点可以删除
 						deleteRemainingChildren(returnFiber, currentChild.sibling)
@@ -121,7 +133,12 @@ function ChildReconciler(shouldTrackSideEffects: boolean) {
 		}
 
 		// 根据 element 类型，创建fiber
-		const childFiber = createFiberFromElement(newChild)
+		let childFiber
+		if (newChild.type === REACT_FRAGMENT_TYPE) {
+			childFiber = createFiberFromFragment(newChild.props.children, key)
+		} else {
+			childFiber = createFiberFromElement(newChild)
+		}
 		childFiber.return = returnFiber
 		return childFiber
 	}
@@ -158,7 +175,7 @@ function ChildReconciler(shouldTrackSideEffects: boolean) {
 	function reconcileChildrenArray(
 		returnFiber: FiberNode,
 		currentFirstChild: FiberNode | null,
-		newChildren: any[],
+		newChildren: ReactElement[],
 	): FiberNode | null {
 		// 最后一个可复用fiber在current中的位置
 		let lastPlacedIndex: number = 0
@@ -260,6 +277,15 @@ function ChildReconciler(shouldTrackSideEffects: boolean) {
 		if (typeof newChild === 'object' && newChild !== null) {
 			switch (newChild.$$typeof) {
 				case REACT_ELEMENT_TYPE:
+					if (newChild.type === REACT_FRAGMENT_TYPE) {
+						return updateFragment(
+							returnFiber,
+							before,
+							newChild.props.children,
+							keyToUse,
+							existingChildren,
+						)
+					}
 					if (before) {
 						if (before.type === newChild.type) {
 							existingChildren.delete(keyToUse)
@@ -274,10 +300,15 @@ function ChildReconciler(shouldTrackSideEffects: boolean) {
 					break
 			}
 
-			// TODO 数组类型
-			if (Array.isArray(newChild) && __DEV__) {
-				console.warn('未实现的数组 reconcileChildFibers 类型', newChild)
-				return null
+			// 如果是数组类型，则当作 Fragment 处理
+			if (Array.isArray(newChild)) {
+				return updateFragment(
+					returnFiber,
+					before,
+					newChild,
+					keyToUse,
+					existingChildren,
+				)
 			}
 		}
 
@@ -289,6 +320,25 @@ function ChildReconciler(shouldTrackSideEffects: boolean) {
 		currentChild: FiberNode | null,
 		newChild?: ReactElement,
 	): FiberNode | null {
+		// 处理组件中顶层 Fragment 的情况，此时作为外层包裹的 Fragment 是没有 key 的
+		const isUnkeyedTopLevelFragment =
+			newChild &&
+			typeof newChild === 'object' &&
+			newChild.type === REACT_FRAGMENT_TYPE &&
+			newChild.key === null
+		if (isUnkeyedTopLevelFragment) {
+			// 将 Fragment 的子节点作为新的 newChild，
+			// 如 <><div>123</div></> 会被编译为
+			// jsx(Fragment, {
+			// 	children: [
+			// 		jsx('div', {
+			// 			children: '123'
+			// 		})
+			// 	]
+			// })
+			newChild = newChild?.props.children
+		}
+
 		// 根据 newChild 的类型，进行不同的处理
 		if (typeof newChild === 'object' && newChild !== null) {
 			// 处理多节点的情况 ul>li*3
@@ -318,7 +368,7 @@ function ChildReconciler(shouldTrackSideEffects: boolean) {
 
 		// 兜底删除
 		if (currentChild !== null) {
-			deleteChildFibers(returnFiber, currentChild)
+			deleteRemainingChildren(returnFiber, currentChild)
 		}
 
 		if (__DEV__) {
@@ -340,6 +390,25 @@ function useFiber(fiber: FiberNode, pendingProps: Props): FiberNode {
 	clone.index = 0
 	clone.sibling = null
 	return clone
+}
+
+function updateFragment(
+	returnFiber: FiberNode,
+	current: FiberNode | undefined,
+	elements: ReactElement[],
+	fragmentKey: Key,
+	existingChildren: ExistingChildren,
+) {
+	let fiber
+	if (!current || current.tag !== Fragment) {
+		fiber = createFiberFromFragment(elements, fragmentKey)
+	} else {
+		existingChildren.delete(fragmentKey)
+		fiber = useFiber(current, elements)
+	}
+
+	fiber.return = returnFiber
+	return fiber
 }
 
 /**

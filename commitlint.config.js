@@ -2,7 +2,7 @@ module.exports = {
 	extends: ['@commitlint/config-conventional'],
 	rules: {
 		'subject-case': [0, 'always'],
-		'subject-empty': [2, 'never'],
+		'subject-empty': [0, 'never'],
 		'type-empty': [2, 'never'],
 		'type-enum': [
 			2,
@@ -25,10 +25,11 @@ module.exports = {
 		'body-leading-blank': [2, 'always'],
 		'subject-full-stop': [0, 'never'],
 	},
+	defaultIgnores: false,
 	parserPreset: {
 		parserOpts: {
-			headerPattern: /^(\w+):\s([\u{1F300}-\u{1F6FF}]|[\u{2600}-\u{26FF}])\s(.+)$/u,
-			headerCorrespondence: ['type', 'emoji', 'subject'],
+			headerPattern: /^(\w+)(?:\(([^)]+)\))?:\s(.*)$/,
+			headerCorrespondence: ['type', 'scope', 'subject'],
 		},
 	},
 }

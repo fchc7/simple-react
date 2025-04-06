@@ -3,6 +3,7 @@ import { reconcileChildFibers, mountChildFibers } from './childFibers'
 import { FiberNode } from './fiber'
 import { processUpdateQueue, UpdateQueue } from './updateQueue'
 import {
+	Fragment,
 	FunctionComponent,
 	HostComponent,
 	HostRoot,
@@ -28,6 +29,8 @@ export const beginWork = (wip: FiberNode): FiberNode | null => {
 			// 对于文本节点，我们不需要计算状态值，也不需要创建子级 FiberNode，
 			// 相当于该条路径已经结束递的状态，直接返回 null 即可
 			return null
+		case Fragment:
+			return updateFragment(wip)
 		case FunctionComponent:
 			return updateFunctionComponent(wip)
 		default:
@@ -98,6 +101,17 @@ function reconcileChildren(wip: FiberNode, children?: ReactElement) {
 
 function updateFunctionComponent(wip: FiberNode) {
 	const nextChildren = renderWithHooks(wip)
+	reconcileChildren(wip, nextChildren)
+	return wip.child
+}
+
+/**
+ * 更新 Fragment 组件
+ * @param wip
+ * @returns
+ */
+function updateFragment(wip: FiberNode) {
+	const nextChildren = wip.pendingProps
 	reconcileChildren(wip, nextChildren)
 	return wip.child
 }
