@@ -23,7 +23,23 @@ let renderLane: Lane = NoLane
  * 然后会发现，在 hook 的数据结构当中，也和 fiber 一样，有 memoizedState 属性，保持了统一
  */
 interface Hook {
+	/**
+	 * 不同的 hook 有不同的类型，所以需要用 any 来表示
+	 * useState 存储当前状态值
+	 * useEffect 存储当前hook的 Effect 对象，与updateQueue不同
+	 * useRef 存储 Ref 对象 { current: T }
+	 * useMemo [计算结果, 依赖数组]
+	 * useCallback [回调函数, 依赖数组]
+	 * useReducer  当前状态
+	 */
 	memoizedState: any
+
+	/**
+	 * 存储当前 hook 的更新队列
+	 * useState/useReducer: 存储更新队列和 dispatch 函数
+	 * useEffect: 存储一个对象 { lastEffect: Effect | null }，其中 lastEffect 指向环状 effects 链表
+	 * useRef/useMemo/useCallback: 通常为 null
+	 */
 	updateQueue: unknown
 	next: Hook | null
 }
@@ -141,6 +157,29 @@ function mountState<State>(
 
 /**
  * update阶段的useState实现，注意这里忽略了传入值
+ * @example
+ * const [age, setAge] = useState(25);
+ * 一个组件多次调用 setAge 的时候，会形成环状链表
+ * setAge(age => age + 1)
+ * setAge(age => age + 1)
+ * setAge(age => age + 1)
+ *
+ * // ageHook 的 updateQueue
+ * ageHook.updateQueue = {
+ *  shared: {
+ *    pending: {
+ *      action: (age) => age + 1,
+ *      next: {
+ *       action: (age) => age + 1,
+ *      next: {
+ *        action: (age) => age + 1,
+ *        next: // 指向第一个更新，形成环状链表
+ *      }
+ *    }
+ *  }
+ * },
+ * dispatch: setAge
+ * };
  * @returns
  */
 function updateState<State>(): [State, Dispatch<State>] {

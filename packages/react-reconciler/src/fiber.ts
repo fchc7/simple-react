@@ -6,22 +6,78 @@ import { Lane, Lanes, NoLane, NoLanes } from './fiberLanes'
 import { Effect } from './fiberHooks'
 
 export class FiberNode {
+	// 节点类型和唯一标识
+	/** 标记 Fiber 的类型，如 FunctionComponent, ClassComponent, HostRoot 等 */
 	tag: WorkTag
-	pendingProps: Props
+	/** Fiber 的唯一标识，用于优化更新过程中的比较策略 */
 	key: Key
-	stateNode: any
+	/** 元素类型，FunctionComponent 的 type 是函数，ClassComponent 的 type 是类 */
 	type: any
+
+	// 状态节点相关
+	/**
+	 * Fiber 对应的实例，不同的 type 有不同的 stateNode:
+	 * - HostComponent 的 stateNode 是 DOM 元素
+	 * - ClassComponent 的 stateNode 是组件实例
+	 * - HostRoot 的 stateNode 是 FiberRootNode
+	 */
+	stateNode: any
+
+	// 树结构相关字段
+	/** 指向父级 Fiber 节点 */
 	return: FiberNode | null
-	alternate: FiberNode | null
+	/** 指向第一个子级 Fiber 节点 */
 	child: FiberNode | null
+	/** 指向下一个兄弟 Fiber 节点 */
 	sibling: FiberNode | null
+	/** 在父级 Fiber 子节点列表中的索引位置 */
 	index: number
+
+	// 引用相关
+	/** React.ref 创建的引用 */
 	ref: any
+
+	// 工作循环相关
+	/**
+	 * 双缓冲技术中的另一个 Fiber 节点
+	 * 用于切换 current（旧，已绘制在屏幕上）和 workInProgress（新）
+	 */
+	alternate: FiberNode | null
+
+	// Props 相关
+	/** 新的 props，工作开始时传入的 props */
+	pendingProps: Props
+	/** 当前渲染使用的 props，工作完成时保存的 props */
 	memoizedProps: Props | null
-	flags: Flags
-	updateQueue: unknown
+
+	// 状态和更新相关
+	/**
+	 * 当前的状态，按组件类型有不同含义:
+	 * - 函数组件: Hook 链表的头部，通过 next 链接其他 Hook
+	 * - 类组件: 组件实例的状态，通过 this.state 访问
+	 * - HostRoot: ReactElement 树，render(<App/>) 传入的组件树
+	 */
 	memoizedState: any
+
+	/**
+	 * 更新队列，按组件类型有不同含义:
+	 * - 函数组件: 存储 Effect 链表引用 { lastEffect: Effect | null }
+	 * - 类组件/HostRoot: 存储状态更新队列，包含待处理的更新
+	 */
+	updateQueue: unknown
+
+	// 副作用标记
+	/**
+	 * 当前 Fiber 的副作用标记，
+	 * 表示当前 Fiber 节点需要进行的操作，如 Placement, Update, Deletion 等
+	 */
+	flags: Flags
+	/**
+	 * 子树的副作用标记，
+	 * 表示子树中包含需要进行操作的节点
+	 */
 	subtreeFlags: Flags
+	/** 需要删除的子级 Fiber 节点列表 */
 	deletions: FiberNode[] | null
 
 	constructor(tag: WorkTag, pendingProps: Props, key: Key) {
@@ -29,46 +85,31 @@ export class FiberNode {
 		this.pendingProps = pendingProps
 		this.key = key || null
 
-		// 不同的type有不同的stateNode
-		// 如 HostComponent 的 stateNode 是 DOM 元素
-		// 如 ClassComponent 的 stateNode 是组件实例
 		this.stateNode = null
 
-		// FunctionComponent 的 type 是函数
-		// ClassComponent 的 type 是类
 		this.type = null
 
-		/**
-		 * 以下是用于描述 FiberNode 的树结构
-		 */
-		// 父级 FiberNode
 		this.return = null
-		// 子级 FiberNode
+
 		this.child = null
-		// 兄弟级 FiberNode
+
 		this.sibling = null
-		// 在父级 FiberNode 中的索引
+
 		this.index = 0
 
 		this.ref = null
 
-		/**
-		 * 用于描述 FiberNode 的更新状态，作为工作单元使用的字段
-		 */
-		// 工作开始时传入的 props
 		this.pendingProps = pendingProps
-		// 工作完成时，保存的 props
+
 		this.memoizedProps = null
 		this.updateQueue = null
 		this.memoizedState = null
 
-		// 备用 FiberNode，切换 current（旧，已绘制在屏幕上） 和 workInProgress（新） 的 FiberNode
 		this.alternate = null
 
-		// 副作用，当前 FiberNode 需要做的动作，如插入、更新、删除等
 		this.flags = NoFlags
 		this.subtreeFlags = NoFlags
-		this.deletions = null // 需要删除的子级 FiberNode
+		this.deletions = null
 	}
 }
 

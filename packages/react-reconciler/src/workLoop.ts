@@ -295,6 +295,7 @@ function commitRoot(root: FiberRootNode) {
 	}
 
 	rootDoesHavePassiveEffects = false
+	// 调度下一个优先级的任务
 	ensureRootIsScheduled(root)
 }
 
